@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -71,6 +72,26 @@ rf_model = RandomForestClassifier(
 )
 
 rf_model.fit(X_train, y_train)
+from sklearn.metrics import accuracy_score, roc_auc_score
+
+y_pred = rf_model.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+
+auc = roc_auc_score(
+    y_test,
+    rf_model.predict_proba(X_test)[:,1]
+)
+
+importance_df = pd.DataFrame({
+    "Feature": X.columns,
+    "Importance": rf_model.feature_importances_
+})
+
+importance_df = importance_df.sort_values(
+    "Importance",
+    ascending=False
+)
 
 # -------------------------------
 # Streamlit UI
@@ -80,6 +101,21 @@ st.title("🏦 Bank Customer Churn Prediction System")
 
 st.write("Enter customer details to predict churn risk.")
 
+st.subheader("Model Performance")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Accuracy", f"{accuracy:.2%}")
+
+with col2:
+    st.metric("ROC-AUC", f"{auc:.3f}")
+
+st.subheader("What-If Scenario Simulator")
+
+st.info(
+    "Adjust customer attributes below and observe how churn probability changes in real time."
+)
 # -------------------------------
 # User Inputs
 # -------------------------------
@@ -184,3 +220,37 @@ if st.button("Predict Churn Risk"):
 
     else:
         st.error("High Risk Customer")
+
+# -------------------------------
+# Feature Importance Dashboard
+# -------------------------------
+
+st.subheader("Top 10 Important Features")
+
+fig, ax = plt.subplots(figsize=(8,5))
+
+ax.barh(
+    importance_df.head(10)["Feature"],
+    importance_df.head(10)["Importance"]
+)
+
+ax.invert_yaxis()
+
+st.pyplot(fig)
+
+st.subheader("Churn Probability Distribution")
+
+probabilities = rf_model.predict_proba(X_test)[:,1]
+
+fig2, ax2 = plt.subplots(figsize=(8,4))
+
+ax2.hist(
+    probabilities,
+    bins=20
+)
+
+ax2.set_xlabel("Churn Probability")
+ax2.set_ylabel("Number of Customers")
+ax2.set_title("Distribution of Churn Risk Scores")
+
+st.pyplot(fig2)
